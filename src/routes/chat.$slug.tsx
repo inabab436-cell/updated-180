@@ -468,48 +468,52 @@ function ChatPage() {
 
   const disabled = sending || !callEdge || !merchantId || !loggedIn;
   const notFound = storefront.data && !storefront.data.found;
+  const products = storefront.data?.products ?? [];
 
   return (
-    <div dir="rtl" className="min-h-screen bg-gradient-surface flex flex-col">
-      <header className="sticky top-0 z-10 border-b border-border/60 bg-background/70 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3 min-w-0">
+    <div dir="rtl" className="hub flex min-h-screen flex-col">
+      <header className="hub-bar">
+        <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
             {storefront.data?.logoUrl ? (
-              <img src={storefront.data.logoUrl} alt={brandName} className="h-9 w-9 rounded-full object-cover" />
+              <img src={storefront.data.logoUrl} alt={brandName} className="h-10 w-10 shrink-0 rounded-2xl object-cover" />
             ) : (
-              <div className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
+              <div className="hub-display grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-brand text-sm font-bold text-primary-foreground">
                 {String(brandName).slice(0, 1).toUpperCase()}
               </div>
             )}
-            <div className="truncate">
-              <div className="text-sm font-semibold truncate">{brandName}</div>
-              <div className="text-[11px] text-muted-foreground">محادثة مباشرة</div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-bold">{brandName}</div>
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />
+                متصل الآن
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1">
             {loggedIn && (
-              <Button asChild variant="ghost" size="sm" title={customerEmail ?? ""}>
+              <Button asChild variant="ghost" size="icon" className="rounded-full" title="حسابي">
                 <Link to="/c/$slug/account" params={{ slug }}>
-                  <UserCircle2 className="ml-1 h-4 w-4" />
-                  حسابي
+                  <UserCircle2 className="h-[18px] w-[18px]" />
                 </Link>
               </Button>
             )}
-            <Button asChild variant="ghost" size="sm">
+            <Button asChild variant="ghost" size="icon" className="rounded-full" title="العودة للمتجر">
               <Link to="/c/$slug" params={{ slug }}>
-                <ArrowRight className="ml-1 h-4 w-4" />
-                العودة للمتجر
+                <ArrowRight className="h-[18px] w-[18px]" />
               </Link>
             </Button>
           </div>
         </div>
-        {/* No handoff/escalation banner is ever shown to the customer:
-            the experience must stay a single, seamless conversation. */}
+
+        {loggedIn && products.length > 0 && (
+          <ProductStrip products={products} onPick={(name) => setInput((v) => (v ? `${v} ${name}` : name))} />
+        )}
       </header>
 
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-4">
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pt-3">
         {notFound && (
-          <div className="rounded-xl border bg-background/80 p-6 text-center text-sm text-muted-foreground">
+          <div className="hub-card p-6 text-center text-sm text-muted-foreground">
             المتجر غير موجود.
           </div>
         )}
@@ -537,8 +541,14 @@ function ChatPage() {
         {loggedIn && (
         <div className="flex-1 space-y-3 overflow-y-auto py-2">
           {messages.length === 0 && !initErr && (
-            <div className="grid place-items-center py-12 text-center text-sm text-muted-foreground">
-              ابدأ المحادثة بكتابة رسالتك في الأسفل.
+            <div className="grid place-items-center py-16 text-center">
+              <div className="grid h-14 w-14 place-items-center rounded-2xl bg-accent text-accent-foreground">
+                <Bot className="h-6 w-6" />
+              </div>
+              <p className="mt-3 text-sm font-semibold">ابدأ المحادثة</p>
+              <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+                اسأل عن أي منتج أو سعر أو شحن، واستعن بشريط المنتجات في الأعلى.
+              </p>
             </div>
           )}
           {messages.map((m, i) => (
@@ -554,13 +564,13 @@ function ChatPage() {
         )}
 
         {loggedIn && (
-        <div className="sticky bottom-0 mt-2 border-t bg-background/80 py-3 backdrop-blur">
+        <div className="sticky bottom-0 -mx-4 mt-2 border-t border-border bg-background/90 px-4 py-3 backdrop-blur-xl">
           {pendingFile && (
-            <div className="mb-2 flex items-center gap-2 rounded-xl border border-border/60 bg-background/70 p-2">
+            <div className="mb-2 flex items-center gap-2 rounded-2xl border border-border bg-secondary/60 p-2">
               <img
                 src={pendingFile.preview}
                 alt="معاينة الصورة المرفقة"
-                className="h-14 w-14 rounded-lg object-cover"
+                className="h-14 w-14 rounded-xl object-cover"
               />
               <div className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
                 {pendingFile.file.name}
@@ -569,6 +579,7 @@ function ChatPage() {
                 type="button"
                 variant="ghost"
                 size="icon"
+                className="rounded-full"
                 onClick={clearPendingFile}
                 disabled={uploading}
                 aria-label="إزالة الصورة"
@@ -578,21 +589,21 @@ function ChatPage() {
             </div>
           )}
           {uploadErr && (
-            <div className="mb-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <div className="mb-2 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {uploadErr}
             </div>
           )}
           {locErr && (
-            <div className="mb-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <div className="mb-2 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {locErr}
             </div>
           )}
-          <div className="mb-2 flex flex-wrap items-center gap-2">
+          <div className="hub-scroll-x mb-2 flex items-center gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="gap-1"
+              className="shrink-0 gap-1 rounded-full"
               onClick={() => void shareLocation(false)}
               disabled={disabled || locBusy || liveSharing}
             >
@@ -601,14 +612,14 @@ function ChatPage() {
               ) : (
                 <MapPin className="h-4 w-4" />
               )}
-              إرسال موقعي الحالي
+              موقعي الحالي
             </Button>
             {liveSharing ? (
               <Button
                 type="button"
                 variant="destructive"
                 size="sm"
-                className="gap-1"
+                className="shrink-0 gap-1 rounded-full"
                 onClick={() => void stopLiveSharing()}
               >
                 <Square className="h-4 w-4" />
@@ -619,7 +630,7 @@ function ChatPage() {
                 type="button"
                 variant="secondary"
                 size="sm"
-                className="gap-1"
+                className="shrink-0 gap-1 rounded-full"
                 onClick={() => void startLiveSharing()}
                 disabled={disabled || locBusy}
               >
@@ -628,13 +639,13 @@ function ChatPage() {
               </Button>
             )}
             {liveSharing && (
-              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+              <span className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+                <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-primary" />
                 جاري تحديث موقعك تلقائياً
               </span>
             )}
           </div>
-          <div className="flex items-end gap-2">
+          <div className="flex items-end gap-2 rounded-[1.5rem] border border-border bg-background p-2 shadow-card">
             <input
               ref={fileInputRef}
               type="file"
@@ -644,9 +655,9 @@ function ChatPage() {
             />
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="icon"
-              className="h-[52px] w-[52px] shrink-0"
+              className="h-11 w-11 shrink-0 rounded-full"
               onClick={() => fileInputRef.current?.click()}
               disabled={disabled || uploading}
               aria-label="إرفاق صورة"
@@ -664,17 +675,18 @@ function ChatPage() {
                 }
               }}
               placeholder="اكتب رسالتك..."
-              rows={2}
-              className="min-h-[52px] resize-none"
+              rows={1}
+              className="min-h-11 resize-none border-0 bg-transparent px-1 py-2.5 shadow-none focus-visible:ring-0"
               disabled={disabled}
             />
             <Button
               onClick={send}
+              size="icon"
               disabled={disabled || uploading || (!input.trim() && !pendingFile)}
-              className="gap-1"
+              className="h-11 w-11 shrink-0 rounded-full"
+              aria-label="إرسال"
             >
               <Send className="h-4 w-4" />
-              إرسال
             </Button>
           </div>
         </div>
@@ -685,12 +697,95 @@ function ChatPage() {
   );
 }
 
+/** Expandable products rail: a swipeable row that opens into a full grid. */
+function ProductStrip({
+  products,
+  onPick,
+}: {
+  products: StorefrontProduct[];
+  onPick: (name: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="border-t border-border bg-secondary/40">
+      <div className="mx-auto w-full max-w-2xl px-4 py-2">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex w-full items-center justify-between gap-2 py-1 text-start"
+        >
+          <span className="flex items-center gap-2 text-[12px] font-bold">
+            <ShoppingBag className="h-4 w-4 text-primary" />
+            منتجات المتجر
+            <span className="hub-chip bg-accent text-accent-foreground">{products.length}</span>
+          </span>
+          <span className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+            {open ? "طي" : "توسيع"}
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
+          </span>
+        </button>
+
+        {open ? (
+          <div className="mt-2 grid max-h-[46vh] grid-cols-2 gap-2 overflow-y-auto pb-2 sm:grid-cols-3">
+            {products.map((p) => (
+              <ProductTile key={p.id} p={p} onPick={onPick} block />
+            ))}
+          </div>
+        ) : (
+          <div className="hub-scroll-x -mx-1 mt-1 flex gap-2 px-1 pb-2">
+            {products.map((p) => (
+              <ProductTile key={p.id} p={p} onPick={onPick} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProductTile({
+  p, onPick, block = false,
+}: {
+  p: StorefrontProduct;
+  onPick: (name: string) => void;
+  block?: boolean;
+}) {
+  const img = p.images?.[0];
+  return (
+    <button
+      onClick={() => onPick(p.name)}
+      title={`اسأل عن ${p.name}`}
+      className={`hub-card overflow-hidden text-start transition-transform active:scale-[0.98] ${
+        block ? "w-full" : "w-[132px] shrink-0 snap-start"
+      }`}
+    >
+      <div className="aspect-[4/3] w-full bg-muted">
+        {img ? (
+          <img src={img} alt={p.name} loading="lazy" className="h-full w-full object-cover" />
+        ) : (
+          <span className="grid h-full w-full place-items-center text-muted-foreground">
+            <ShoppingBag className="h-5 w-5" />
+          </span>
+        )}
+      </div>
+      <div className="p-2">
+        <div className="line-clamp-2 text-[11px] font-bold leading-snug">{p.name}</div>
+        {p.price != null && (
+          <div className="mt-1 text-[11px] font-semibold text-primary">
+            {p.price} {p.currency ?? ""}
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
 const BUBBLE_THEME = {
-  userBubble: "bg-primary text-primary-foreground rounded-tr-sm",
+  userBubble: "bg-gradient-brand text-primary-foreground rounded-br-md",
   userAvatar: "bg-primary text-primary-foreground",
   assistantBubble:
-    "bg-background border border-border/60 text-foreground rounded-tl-sm",
-  assistantAvatar: "bg-muted text-foreground",
+    "bg-background border border-border text-foreground rounded-bl-md shadow-card",
+  assistantAvatar: "bg-accent text-accent-foreground",
 };
 
 function MessageBubble({
@@ -709,13 +804,13 @@ function MessageBubble({
   const media = all.filter((a) => a.kind !== "location");
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div className={`flex max-w-[85%] items-start gap-2 ${isUser ? "flex-row-reverse" : ""}`}>
-        <div className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs ${
+      <div className={`flex max-w-[86%] items-end gap-2 ${isUser ? "flex-row-reverse" : ""}`}>
+        <div className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs ${
           isUser ? theme.userAvatar : theme.assistantAvatar
         }`}>
           {isUser ? <User2 className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
         </div>
-        <div className={`space-y-2 rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap leading-relaxed shadow-sm ${
+        <div className={`space-y-2 rounded-3xl px-3.5 py-2.5 text-[13px] whitespace-pre-wrap leading-relaxed ${
           isUser ? theme.userBubble : theme.assistantBubble
         }`}>
           {media.length > 0 && (
@@ -726,7 +821,7 @@ function MessageBubble({
                     src={a.url}
                     alt={a.name || "صورة مرفقة"}
                     loading="lazy"
-                    className="max-h-56 w-full rounded-xl object-cover"
+                    className="max-h-56 w-full rounded-2xl object-cover"
                   />
                 </a>
               ))}
@@ -740,17 +835,17 @@ function MessageBubble({
                 href={mapsUrl(a.lat, a.lng)}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-2 rounded-xl border border-border/50 bg-background/60 px-3 py-2 text-foreground no-underline"
+                className="flex items-center gap-2 rounded-2xl border border-border bg-background px-3 py-2 text-foreground no-underline"
               >
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent">
                   {live ? (
-                    <Radio className="h-4 w-4 animate-pulse text-emerald-600" />
+                    <Radio className="h-4 w-4 animate-pulse text-primary" />
                   ) : (
                     <MapPin className="h-4 w-4" />
                   )}
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-xs font-semibold">{formatLocationSummary(a)}</span>
+                  <span className="block text-xs font-bold">{formatLocationSummary(a)}</span>
                   <span className="block text-[11px] text-muted-foreground">
                     فتح في الخرائط
                     {a.accuracy != null ? ` · دقة ±${a.accuracy}م` : ""}
@@ -765,4 +860,5 @@ function MessageBubble({
     </div>
   );
 }
+
 
