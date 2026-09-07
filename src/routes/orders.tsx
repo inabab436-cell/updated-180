@@ -1,14 +1,17 @@
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ORDER_PAYMENT_STATE_LABEL_AR, orderPaymentState } from "@/lib/payment-policy";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ChevronDown, ChevronUp, ClipboardList, Truck, PackageCheck, Package, Settings2, Info, XCircle, Trash2, BadgeCheck } from "lucide-react";
+import {
+  ChevronDown, Truck, PackageCheck, Package, Settings2, Info, XCircle,
+  Trash2, BadgeCheck, Phone, MapPin, StickyNote, Search,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { PageShell, PageHero, SurfaceCard } from "@/components/layout/page-shell";
+import { HubShell, HubCard } from "@/components/hub/hub-shell";
 import {
   listOrders,
   updateOrderStatus,
@@ -31,15 +34,21 @@ export const Route = createFileRoute("/orders")({
     meta: [
       { title: "الطلبات · cupai" },
       { name: "description", content: "إدارة الطلبات ومتابعة حالة الشحن والتسليم." },
+      { property: "og:title", content: "الطلبات · cupai" },
+      { property: "og:description", content: "إدارة الطلبات ومتابعة حالة الشحن والتسليم." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: OrdersPage,
 });
 
+const STATUS_ORDER = ["new", "prepared", "shipped", "delivered"] as const;
+
 function statusLabel(s: string): string {
   switch (s) {
     case "new": return "جديد";
-    case "prepared": return "تم تجهيز الأوردر";
+    case "prepared": return "تم التجهيز";
     case "shipped": return "تم الشحن";
     case "delivered": return "تم التسليم";
     case "cancelled": return "ملغى";
@@ -49,10 +58,10 @@ function statusLabel(s: string): string {
 
 function statusClass(s: string): string {
   switch (s) {
-    case "new": return "bg-primary/10 text-primary";
-    case "prepared": return "bg-violet-500/10 text-violet-600";
-    case "shipped": return "bg-blue-500/10 text-blue-600";
-    case "delivered": return "bg-emerald-500/10 text-emerald-600";
+    case "new": return "bg-accent text-accent-foreground";
+    case "prepared": return "bg-violet-500/10 text-violet-700";
+    case "shipped": return "bg-blue-500/10 text-blue-700";
+    case "delivered": return "bg-primary text-primary-foreground";
     case "cancelled": return "bg-destructive/10 text-destructive";
     default: return "bg-muted text-muted-foreground";
   }
@@ -95,12 +104,12 @@ function OrderValue({ order }: { order: OrderRow }) {
   const pendingDiscount = Number(order.pending_discount ?? 0) || 0;
 
   return (
-    <div className="leading-tight">
-      <div className="font-semibold">
-        {fmtMoney(value)} {currency}
+    <div className="text-end leading-tight">
+      <div className="hub-display text-xl font-bold">
+        {fmtMoney(value)} <span className="text-xs font-medium text-muted-foreground">{currency}</span>
       </div>
       {discount > 0 && (
-        <div className="text-[11px] text-emerald-700">
+        <div className="text-[11px] font-medium text-primary">
           بعد خصم {fmtMoney(discount)} {currency}
           {percent > 0 ? ` (${percent}%)` : ""}
         </div>
@@ -116,12 +125,12 @@ function OrderValue({ order }: { order: OrderRow }) {
 }
 
 
-
-
 function OrdersPage() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["orders"], queryFn: () => listOrders() });
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [filter, setFilter] = useState<"all" | "new" | "prepared" | "shipped" | "delivered" | "cancelled">("all");
+  const [search, setSearch] = useState("");
 
   const statusMut = useMutation({
     mutationFn: (v: { id: string; status: "prepared" | "shipped" | "delivered" }) =>
@@ -178,20 +187,86 @@ function OrdersPage() {
     statusMut.mutate({ id: o.id, status });
   };
 
-
   const rows: OrderRow[] = q.data ?? [];
 
-  return (
-    <PageShell>
-      <PageHero
-        eyebrow="إدارة الطلبات"
-        icon={<ClipboardList className="h-3.5 w-3.5" />}
-        title="كل"
-        highlight="الطلبات"
-        description="تابع الطلبات، وسّع أي طلب لعرض تفاصيله، وحدّث الحالة ليصل إشعار للعميل تلقائياً."
-      />
+  const counts = rows.reduce<Record<string, number>>((acc, o) => {
+    acc[o.status] = (acc[o.status] ?? 0) + 1;
+    return acc;
+  }, {});
 
-      <SurfaceCard className="flex items-start gap-2 p-4 text-xs leading-relaxed text-muted-foreground">
+  const term = search.trim().toLowerCase();
+  const visible = rows.filter((o) => {
+    if (filter !== "all" && o.status !== filter) return false;
+    if (!term) return true;
+    return [o.order_number, o.customer_name, o.customer_phone, o.customer_address]
+      .filter(Boolean)
+      .some((v) => String(v).toLowerCase().includes(term));
+  });
+
+  const chips: { key: typeof filter; label: string }[] = [
+    { key: "all", label: `الكل (${rows.length})` },
+    ...STATUS_ORDER.map((s) => ({ key: s as typeof filter, label: `${statusLabel(s)} (${counts[s] ?? 0})` })),
+    { key: "cancelled", label: `ملغى (${counts.cancelled ?? 0})` },
+  ];
+
+  return (
+    <HubShell
+      eyebrow="إدارة الطلبات"
+      title={<>كل الطلبات</>}
+      subtitle="افتح أي طلب لعرض تفاصيله، وحدّث حالته ليصل إشعار للعميل تلقائياً."
+    >
+      {/* Search + filters */}
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="ابحث برقم الطلب، الاسم، الهاتف أو العنوان"
+            className="hub-card w-full px-4 py-3 pe-10 text-sm outline-none placeholder:text-muted-foreground focus:border-primary/50"
+          />
+        </div>
+        <div className="hub-scroll-x -mx-4 flex gap-2 px-4 pb-1">
+          {chips.map((c) => (
+            <button
+              key={c.key}
+              onClick={() => setFilter(c.key)}
+              className={`shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                filter === c.key
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-background text-muted-foreground"
+              }`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {q.isLoading ? (
+        <HubCard className="p-10 text-center text-sm text-muted-foreground">جاري التحميل...</HubCard>
+      ) : visible.length === 0 ? (
+        <HubCard className="p-12 text-center text-sm text-muted-foreground">
+          {rows.length === 0 ? "لا توجد طلبات بعد." : "لا توجد طلبات مطابقة."}
+        </HubCard>
+      ) : (
+        <div className="space-y-3">
+          {visible.map((o) => (
+            <OrderCard
+              key={o.id}
+              o={o}
+              open={!!expanded[o.id]}
+              onToggle={() => setExpanded((s) => ({ ...s, [o.id]: !s[o.id] }))}
+              onPay={() => payMut.mutate({ id: o.id })}
+              onStatus={(s) => guardedStatus(o, s)}
+              onCancel={() => cancelMut.mutate({ id: o.id })}
+              busy={{ pay: payMut.isPending, status: statusMut.isPending, cancel: cancelMut.isPending }}
+            />
+          ))}
+        </div>
+      )}
+
+      <HubCard className="flex items-start gap-2 p-4 text-[11px] leading-relaxed text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <p>
           الطلبات بطريقة دفع <span className="font-semibold text-foreground">تلقائية</span> يتم خصم كمياتها من المخزون فور إنشاء الطلب.
@@ -199,254 +274,241 @@ function OrdersPage() {
           <span className="font-semibold text-foreground"> «تأكيد الدفع»</span>، وعندها يتم التحقق من المخزون الحقيقي ثم الخصم.
           لو حابب ترجّع الكميات للمخزون مرة أخرى، اضغط زر <span className="font-semibold text-foreground">«ملغي»</span> بجانب الطلب.
         </p>
-      </SurfaceCard>
-
+      </HubCard>
 
       <StatusMessagesEditor />
+    </HubShell>
+  );
+}
 
-      {q.isLoading ? (
-        <SurfaceCard className="p-10 text-center text-sm text-muted-foreground">جاري التحميل...</SurfaceCard>
-      ) : rows.length === 0 ? (
-        <SurfaceCard className="p-12 text-center">
-          <p className="text-sm text-muted-foreground">لا توجد طلبات بعد.</p>
-        </SurfaceCard>
-      ) : (
-        <SurfaceCard>
-          <div className="overflow-x-auto">
-            <table className="w-full text-right text-sm">
-              <thead className="bg-muted/40 text-[11px] uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="w-8 px-3 py-3"></th>
-                  <th className="px-4 py-3">رقم الطلب</th>
-                  <th className="px-4 py-3">العميل</th>
-                  <th className="px-4 py-3">الهاتف</th>
-                  <th className="px-4 py-3">العنوان</th>
-                  <th className="px-4 py-3">قيمة الطلب</th>
-                  <th className="px-4 py-3">الحالة</th>
-                  <th className="px-4 py-3">الدفع</th>
-                  <th className="px-4 py-3">التاريخ</th>
+function StatusRail({ status }: { status: string }) {
+  if (status === "cancelled") return null;
+  const idx = STATUS_ORDER.indexOf(status as (typeof STATUS_ORDER)[number]);
+  return (
+    <div className="mt-3 flex items-center gap-1.5">
+      {STATUS_ORDER.map((s, i) => (
+        <span
+          key={s}
+          className={`h-1.5 flex-1 rounded-full ${i <= idx ? "bg-primary" : "bg-muted"}`}
+          title={statusLabel(s)}
+        />
+      ))}
+    </div>
+  );
+}
 
-                  <th className="px-4 py-3">الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {rows.map((o) => {
-                  const open = !!expanded[o.id];
-                  return (
-                    <Fragment key={o.id}>
-                      <tr className="hover:bg-muted/20">
-                        <td className="px-3 py-3">
-                          <button
-                            onClick={() => setExpanded((s) => ({ ...s, [o.id]: !s[o.id] }))}
-                            className="grid h-7 w-7 place-items-center rounded-lg border border-border/60 bg-background hover:bg-muted"
-                            aria-label={open ? "طي" : "توسيع"}
-                          >
-                            {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                          </button>
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs">{o.order_number ?? o.id.slice(0, 8)}</td>
-                        <td className="px-4 py-3 font-medium">{o.customer_name ?? "—"}</td>
-                        <td className="px-4 py-3 font-mono text-xs" dir="ltr">{o.customer_phone ?? "—"}</td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground max-w-[220px] truncate" title={o.customer_address ?? ""}>
-                          {o.customer_address ?? "—"}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <OrderValue order={o} />
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusClass(o.status)}`}>
-                            {statusLabel(o.status)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex flex-col items-start gap-1">
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                                o.payment_status === "pending"
-                                  ? "bg-amber-100 text-amber-800"
-                                  : orderPaymentState(o) === "on_delivery"
-                                    ? "bg-sky-100 text-sky-800"
-                                    : "bg-emerald-100 text-emerald-800"
-                              }`}
-                              title={o.payment_method ?? ""}
-                            >
-                              {ORDER_PAYMENT_STATE_LABEL_AR[orderPaymentState(o)]}
-                            </span>
-                            {hasPendingAddition(o) && (
-                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
-                                إضافة بانتظار الدفع
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{fmtDate(o.created_at)}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex flex-wrap gap-1.5">
-                            {(o.payment_status === "pending" || hasPendingAddition(o)) &&
-                              o.status !== "cancelled" && (
-                              <Button
-                                size="sm"
-                                disabled={payMut.isPending}
-                                onClick={() => payMut.mutate({ id: o.id })}
-                              >
-                                <BadgeCheck className="ml-1 h-3.5 w-3.5" />{" "}
-                                {o.payment_status === "pending" ? "تأكيد الدفع" : "تأكيد دفع الإضافة"}
-                              </Button>
-                            )}
-
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={
-                                o.status === "prepared" ||
-                                o.status === "shipped" ||
-                                o.status === "delivered" ||
-                                o.status === "cancelled" ||
-                                statusMut.isPending
-                              }
-                              onClick={() => guardedStatus(o, "prepared")}
-                            >
-                              <Package className="ml-1 h-3.5 w-3.5" /> تجهيز
-                            </Button>
-                            <Button
-                              size="sm"
-
-                              variant="outline"
-                              disabled={o.status === "shipped" || o.status === "delivered" || statusMut.isPending}
-                              onClick={() => guardedStatus(o, "shipped")}
-                            >
-                              <Truck className="ml-1 h-3.5 w-3.5" /> شحن
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={o.status === "delivered" || statusMut.isPending}
-                              onClick={() => guardedStatus(o, "delivered")}
-                            >
-                              <PackageCheck className="ml-1 h-3.5 w-3.5" /> تسليم
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-destructive hover:text-destructive"
-                              disabled={o.status === "cancelled" || cancelMut.isPending}
-                              onClick={() => cancelMut.mutate({ id: o.id })}
-                            >
-                              <XCircle className="ml-1 h-3.5 w-3.5" /> ملغي
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                      {hasPendingAddition(o) && (
-                        <tr className="bg-amber-50/60">
-                          <td></td>
-                          <td colSpan={8} className="px-4 pb-3 pt-0">
-                            <div className="rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
-                              تنبيه: أضاف العميل منتجات على هذا الطلب بعد تأكيد الدفع
-                              {o.pending_since ? ` (${fmtDate(o.pending_since)})` : ""}.
-                              {" "}
-                              {pendingItemsOf(o)
-                                .map((it) =>
-                                  `${[it.product_name, it.color, it.size].filter(Boolean).join(" - ")} × ${Number(it.quantity ?? 0)}`,
-                                )
-                                .join("، ")}
-                              {" — "}
-                              المطلوب {fmtMoney(Number(o.pending_total ?? 0))}. الجزء المدفوع سابقًا لم يتغيّر، ومخزون الإضافة لم يُخصم،
-                              ولن تُحتسب مدفوعة إلا بعد الضغط على «تأكيد دفع الإضافة».
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                      {open && (
-
-                        <tr className="bg-muted/10">
-                          <td></td>
-                          <td colSpan={8} className="px-4 py-4">
-                            <div className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                              تفاصيل المنتجات
-                            </div>
-                            <div className="overflow-x-auto rounded-lg border border-border/60 bg-background">
-                              <table className="w-full text-right text-xs">
-                                <thead className="bg-muted/40 text-[10px] uppercase text-muted-foreground">
-                                  <tr>
-                                    <th className="px-3 py-2">المنتج</th>
-                                    <th className="px-3 py-2">اللون</th>
-                                    <th className="px-3 py-2">المقاس</th>
-                                    <th className="px-3 py-2">الكمية</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border/60">
-                                  {o.items.length === 0 ? (
-                                    <tr><td colSpan={4} className="px-3 py-4 text-center text-muted-foreground">لا توجد منتجات.</td></tr>
-                                  ) : o.items.map((it, i) => (
-                                    <tr key={i}>
-                                      <td className="px-3 py-2 font-medium">{it.product_name ?? "—"}</td>
-                                      <td className="px-3 py-2">{it.color ?? "—"}</td>
-                                      <td className="px-3 py-2">{it.size ?? "—"}</td>
-                                      <td className="px-3 py-2">{it.quantity ?? "—"}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                            {hasPendingAddition(o) && (
-                              <>
-                                <div className="mt-4 mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-700">
-                                  إضافة بانتظار تأكيد الدفع
-                                </div>
-                                <div className="overflow-x-auto rounded-lg border border-amber-300/70 bg-amber-50/40">
-                                  <table className="w-full text-right text-xs">
-                                    <thead className="bg-amber-100/60 text-[10px] uppercase text-amber-800">
-                                      <tr>
-                                        <th className="px-3 py-2">المنتج</th>
-                                        <th className="px-3 py-2">اللون</th>
-                                        <th className="px-3 py-2">المقاس</th>
-                                        <th className="px-3 py-2">الكمية</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-amber-200/70">
-                                      {pendingItemsOf(o).map((it, i) => (
-                                        <tr key={i}>
-                                          <td className="px-3 py-2 font-medium">{String(it.product_name ?? "—")}</td>
-                                          <td className="px-3 py-2">{String(it.color ?? "—")}</td>
-                                          <td className="px-3 py-2">{String(it.size ?? "—")}</td>
-                                          <td className="px-3 py-2">{String(it.quantity ?? "—")}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                                <div className="mt-2 text-[11px] text-amber-700">
-                                  قيمة الإضافة: {fmtMoney(Number(o.pending_total ?? 0))} — لا يُخصم مخزونها ولا تُحتسب مدفوعة قبل تأكيد الدفع.
-                                </div>
-                              </>
-                            )}
-
-                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                              <div>
-                                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">ملاحظات العميل</div>
-                                <div className="mt-1 rounded-lg border border-border/60 bg-background p-3 text-xs leading-relaxed whitespace-pre-wrap">
-                                  {o.notes?.trim() ? o.notes : <span className="text-muted-foreground">لا توجد ملاحظات.</span>}
-                                </div>
-                              </div>
-                              <div className="text-xs text-muted-foreground space-y-1">
-                                <div>تاريخ التجهيز: <span className="font-medium text-foreground">{fmtDate(o.prepared_at)}</span></div>
-                                <div>تاريخ الشحن: <span className="font-medium text-foreground">{fmtDate(o.shipped_at)}</span></div>
-                                <div>تاريخ التسليم: <span className="font-medium text-foreground">{fmtDate(o.delivered_at)}</span></div>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
+function OrderCard({
+  o, open, onToggle, onPay, onStatus, onCancel, busy,
+}: {
+  o: OrderRow;
+  open: boolean;
+  onToggle: () => void;
+  onPay: () => void;
+  onStatus: (s: "prepared" | "shipped" | "delivered") => void;
+  onCancel: () => void;
+  busy: { pay: boolean; status: boolean; cancel: boolean };
+}) {
+  const pending = hasPendingAddition(o);
+  return (
+    <HubCard className="overflow-hidden">
+      <button onClick={onToggle} className="block w-full p-4 text-start">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`hub-chip ${statusClass(o.status)}`}>{statusLabel(o.status)}</span>
+              <span
+                className={`hub-chip ${
+                  o.payment_status === "pending"
+                    ? "bg-amber-500/12 text-amber-700"
+                    : orderPaymentState(o) === "on_delivery"
+                      ? "bg-sky-500/12 text-sky-700"
+                      : "bg-primary/10 text-primary"
+                }`}
+                title={o.payment_method ?? ""}
+              >
+                {ORDER_PAYMENT_STATE_LABEL_AR[orderPaymentState(o)]}
+              </span>
+              {pending && (
+                <span className="hub-chip bg-amber-500/12 text-amber-700">إضافة بانتظار الدفع</span>
+              )}
+            </div>
+            <div className="mt-2 truncate text-[15px] font-bold">{o.customer_name ?? "بدون اسم"}</div>
+            <div className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+              #{o.order_number ?? o.id.slice(0, 8)} · {fmtDate(o.created_at)}
+            </div>
           </div>
-        </SurfaceCard>
+          <div className="flex flex-col items-end gap-2">
+            <OrderValue order={o} />
+            <ChevronDown
+              className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+            />
+          </div>
+        </div>
+        <StatusRail status={o.status} />
+      </button>
+
+      {pending && (
+        <div className="mx-4 mb-3 rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900">
+          تنبيه: أضاف العميل منتجات على هذا الطلب بعد تأكيد الدفع
+          {o.pending_since ? ` (${fmtDate(o.pending_since)})` : ""}.{" "}
+          {pendingItemsOf(o)
+            .map((it) => `${[it.product_name, it.color, it.size].filter(Boolean).join(" - ")} × ${Number(it.quantity ?? 0)}`)
+            .join("، ")}
+          {" — "}
+          المطلوب {fmtMoney(Number(o.pending_total ?? 0))}. الجزء المدفوع سابقًا لم يتغيّر، ومخزون الإضافة لم يُخصم،
+          ولن تُحتسب مدفوعة إلا بعد الضغط على «تأكيد دفع الإضافة».
+        </div>
       )}
-    </PageShell>
+
+      {open && (
+        <div className="space-y-4 border-t border-border bg-secondary/50 p-4">
+          <div className="grid gap-2 text-[12px] sm:grid-cols-2">
+            <InfoRow icon={<Phone className="h-3.5 w-3.5" />} label="الهاتف">
+              <span dir="ltr" className="font-mono">{o.customer_phone ?? "—"}</span>
+            </InfoRow>
+            <InfoRow icon={<MapPin className="h-3.5 w-3.5" />} label="العنوان">
+              {o.customer_address ?? "—"}
+            </InfoRow>
+          </div>
+
+          <div>
+            <SectionLabel>تفاصيل المنتجات</SectionLabel>
+            {o.items.length === 0 ? (
+              <div className="rounded-xl border border-border bg-background p-4 text-center text-xs text-muted-foreground">
+                لا توجد منتجات.
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {o.items.map((it, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 py-2 text-xs"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold">{it.product_name ?? "—"}</span>
+                      <span className="block text-[11px] text-muted-foreground">
+                        {[it.color, it.size].filter(Boolean).join(" · ") || "—"}
+                      </span>
+                    </span>
+                    <span className="shrink-0 rounded-lg bg-accent px-2 py-1 text-[11px] font-bold text-accent-foreground">
+                      × {it.quantity ?? "—"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {pending && (
+            <div>
+              <SectionLabel className="text-amber-700">إضافة بانتظار تأكيد الدفع</SectionLabel>
+              <ul className="space-y-2">
+                {pendingItemsOf(o).map((it, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-amber-300/70 bg-amber-50/60 px-3 py-2 text-xs text-amber-900"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold">{String(it.product_name ?? "—")}</span>
+                      <span className="block text-[11px]">
+                        {[it.color, it.size].filter(Boolean).map(String).join(" · ") || "—"}
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-bold">× {String(it.quantity ?? "—")}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-2 text-[11px] text-amber-700">
+                قيمة الإضافة: {fmtMoney(Number(o.pending_total ?? 0))} — لا يُخصم مخزونها ولا تُحتسب مدفوعة قبل تأكيد الدفع.
+              </div>
+            </div>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <SectionLabel>ملاحظات العميل</SectionLabel>
+              <div className="flex items-start gap-2 rounded-xl border border-border bg-background p-3 text-xs leading-relaxed whitespace-pre-wrap">
+                <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                {o.notes?.trim() ? o.notes : <span className="text-muted-foreground">لا توجد ملاحظات.</span>}
+              </div>
+            </div>
+            <div className="space-y-1 text-[11px] text-muted-foreground">
+              <div>تاريخ التجهيز: <span className="font-semibold text-foreground">{fmtDate(o.prepared_at)}</span></div>
+              <div>تاريخ الشحن: <span className="font-semibold text-foreground">{fmtDate(o.shipped_at)}</span></div>
+              <div>تاريخ التسليم: <span className="font-semibold text-foreground">{fmtDate(o.delivered_at)}</span></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="hub-scroll-x flex gap-2 border-t border-border p-3">
+        {(o.payment_status === "pending" || pending) && o.status !== "cancelled" && (
+          <Button size="sm" className="shrink-0 rounded-full" disabled={busy.pay} onClick={onPay}>
+            <BadgeCheck className="ml-1 h-3.5 w-3.5" />
+            {o.payment_status === "pending" ? "تأكيد الدفع" : "تأكيد دفع الإضافة"}
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="outline"
+          className="shrink-0 rounded-full"
+          disabled={
+            o.status === "prepared" || o.status === "shipped" ||
+            o.status === "delivered" || o.status === "cancelled" || busy.status
+          }
+          onClick={() => onStatus("prepared")}
+        >
+          <Package className="ml-1 h-3.5 w-3.5" /> تجهيز
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="shrink-0 rounded-full"
+          disabled={o.status === "shipped" || o.status === "delivered" || busy.status}
+          onClick={() => onStatus("shipped")}
+        >
+          <Truck className="ml-1 h-3.5 w-3.5" /> شحن
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="shrink-0 rounded-full"
+          disabled={o.status === "delivered" || busy.status}
+          onClick={() => onStatus("delivered")}
+        >
+          <PackageCheck className="ml-1 h-3.5 w-3.5" /> تسليم
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="shrink-0 rounded-full text-destructive hover:text-destructive"
+          disabled={o.status === "cancelled" || busy.cancel}
+          onClick={onCancel}
+        >
+          <XCircle className="ml-1 h-3.5 w-3.5" /> ملغي
+        </Button>
+      </div>
+    </HubCard>
+  );
+}
+
+function SectionLabel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+function InfoRow({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-2 rounded-xl border border-border bg-background px-3 py-2">
+      <span className="mt-0.5 text-muted-foreground">{icon}</span>
+      <span className="min-w-0">
+        <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="block break-words">{children}</span>
+      </span>
+    </div>
   );
 }
 
@@ -508,13 +570,13 @@ function StatusMessagesEditor() {
     });
 
   return (
-    <SurfaceCard className="space-y-5 p-5">
+    <HubCard className="space-y-5 p-5">
       <div>
-        <div className="flex items-center gap-2 text-sm font-semibold">
+        <div className="flex items-center gap-2 text-sm font-bold">
           <Settings2 className="h-4 w-4 text-primary" />
           الرسائل التلقائية لحالات الأوردر
         </div>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+        <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
           تحكم في الرسائل التي يتم إرسالها تلقائيًا للعميل عند تحديث حالة الأوردر. يمكنك تعديلها أو حذفها أو إيقاف إرسالها بالكامل.
         </p>
       </div>
@@ -570,10 +632,10 @@ function StatusMessagesEditor() {
         pending={saveMut.isPending}
       />
 
-      <Button onClick={() => save()} disabled={saveMut.isPending || q.isLoading}>
+      <Button className="rounded-full" onClick={() => save()} disabled={saveMut.isPending || q.isLoading}>
         حفظ التعديلات
       </Button>
-    </SurfaceCard>
+    </HubCard>
   );
 }
 
@@ -588,9 +650,9 @@ function MessageBlock(props: {
   pending: boolean;
 }) {
   return (
-    <div className="space-y-2 rounded-xl border border-border/60 p-4">
+    <div className="space-y-2 rounded-xl border border-border bg-secondary/40 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <label className="text-xs font-medium">{props.title}</label>
+        <label className="text-xs font-bold">{props.title}</label>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-muted-foreground">
@@ -614,6 +676,7 @@ function MessageBlock(props: {
         onChange={(e) => props.onChange(e.target.value)}
         rows={props.rows}
         disabled={!props.enabled}
+        className="bg-background"
         placeholder="لا توجد رسالة — لن يتم إرسال أي شيء للعميل."
       />
       {(!props.enabled || !props.value.trim()) && (

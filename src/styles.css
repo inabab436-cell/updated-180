@@ -201,3 +201,92 @@
 @utility shadow-card {
   box-shadow: var(--shadow-card);
 }
+
+/* ============================================================
+   HUB — isolated redesign scope for /orders, /earnings, /chat.
+   Soft-white + deep-green, geometric type, mobile-first.
+   Nothing here leaks outside an element carrying `.hub`.
+   ============================================================ */
+.hub {
+  --hub-green: oklch(0.42 0.09 165);
+  --hub-green-deep: oklch(0.33 0.08 166);
+  --hub-green-soft: oklch(0.95 0.02 165);
+  --hub-ink: oklch(0.22 0.02 265);
+
+  --background: oklch(1 0 0);
+  --foreground: var(--hub-ink);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--hub-ink);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--hub-ink);
+  --primary: var(--hub-green);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.972 0.004 165);
+  --secondary-foreground: var(--hub-green-deep);
+  --muted: oklch(0.972 0.004 165);
+  --muted-foreground: oklch(0.52 0.015 250);
+  --accent: var(--hub-green-soft);
+  --accent-foreground: var(--hub-green-deep);
+  --border: oklch(0.925 0.004 165);
+  --input: oklch(0.925 0.004 165);
+  --ring: var(--hub-green);
+  --radius: 1.125rem;
+
+  --gradient-brand: linear-gradient(140deg, oklch(0.47 0.1 165) 0%, oklch(0.33 0.08 166) 100%);
+  --gradient-surface: none;
+  --shadow-card: 0 1px 2px oklch(0.22 0.02 265 / 0.05), 0 10px 30px -22px oklch(0.22 0.02 265 / 0.35);
+  --shadow-elegant: 0 1px 2px oklch(0.22 0.02 265 / 0.05), 0 18px 44px -28px oklch(0.33 0.08 166 / 0.5);
+  --shadow-glow: 0 24px 60px -28px oklch(0.42 0.09 165 / 0.45);
+
+  background-color: oklch(0.976 0.003 165);
+  color: var(--foreground);
+  font-family: "DM Sans", var(--font-sans);
+  letter-spacing: -0.005em;
+}
+
+.hub h1,
+.hub h2,
+.hub h3,
+.hub .hub-display {
+  font-family: "Space Grotesk", "DM Sans", var(--font-sans);
+  letter-spacing: -0.02em;
+}
+
+/* Frosted top bar used by every hub page */
+@utility hub-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background-color: color-mix(in oklab, oklch(1 0 0) 82%, transparent);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--border);
+}
+
+@utility hub-card {
+  border-radius: var(--radius);
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+}
+
+@utility hub-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+@utility hub-scroll-x {
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hub-scroll-x::-webkit-scrollbar {
+  display: none;
+}
