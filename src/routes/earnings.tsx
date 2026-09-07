@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { TrendingUp, Package, Clock } from "lucide-react";
+import { TrendingUp, Package, Clock, ArrowUpRight } from "lucide-react";
 
-import { PageShell, PageHero, SurfaceCard } from "@/components/layout/page-shell";
+import { HubShell, HubCard } from "@/components/hub/hub-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getEarningsSummary, type EarningsSummary } from "@/lib/orders.functions";
 
@@ -40,145 +40,128 @@ function EarningsPage() {
   const data: EarningsSummary | undefined = q.data;
 
   return (
-    <PageShell>
-      <PageHero
-        eyebrow="نظرة مالية"
-        icon={<TrendingUp className="h-3.5 w-3.5" />}
-        title="أرباح متجرك"
-        highlight="في ثوانٍ"
-        description="ثلاثة مؤشرات تُعطيك صورة كاملة عن أداء متجرك المالي."
-      />
-
+    <HubShell
+      eyebrow="نظرة مالية"
+      title={<>أرباح متجرك</>}
+      subtitle="ثلاثة مؤشرات تكفي لتعرف موقفك المالي في ثوانٍ."
+    >
       {q.isLoading ? (
         <LoadingMetrics />
       ) : q.isError ? (
-        <SurfaceCard className="flex flex-col items-center justify-center gap-4 p-12 text-center">
-          <div className="grid h-16 w-16 place-items-center rounded-2xl bg-destructive/10 text-destructive">
-            <TrendingUp className="h-7 w-7" />
+        <HubCard className="p-8 text-center">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-destructive/10 text-destructive">
+            <TrendingUp className="h-6 w-6" />
           </div>
-          <div>
-            <h2 className="text-lg font-semibold">تعذر تحميل البيانات</h2>
-            <p className="mt-1 max-w-md text-sm text-muted-foreground">
-              {(q.error as Error)?.message || "حدث خطأ أثناء جلب نظرتك المالية."}
-            </p>
-          </div>
-        </SurfaceCard>
+          <h2 className="mt-4 text-lg font-bold">تعذر تحميل البيانات</h2>
+          <p className="mx-auto mt-1 max-w-sm text-[13px] text-muted-foreground">
+            {(q.error as Error)?.message || "حدث خطأ أثناء جلب نظرتك المالية."}
+          </p>
+        </HubCard>
       ) : !data || data.orderCount === 0 ? (
-        <SurfaceCard className="flex flex-col items-center justify-center gap-4 p-12 text-center">
-          <div className="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-brand text-primary-foreground shadow-glow">
-            <TrendingUp className="h-7 w-7" />
+        <HubCard className="p-10 text-center">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-brand text-primary-foreground shadow-glow">
+            <TrendingUp className="h-6 w-6" />
           </div>
-          <div>
-            <h2 className="text-lg font-semibold">لا توجد أرباح بعد</h2>
-            <p className="mt-1 max-w-md text-sm text-muted-foreground">
-              بمجرد استلام أول طلب، ستظهر هنا نظرتك المالية السريعة.
-            </p>
-          </div>
-        </SurfaceCard>
+          <h2 className="mt-4 text-lg font-bold">لا توجد أرباح بعد</h2>
+          <p className="mx-auto mt-1 max-w-sm text-[13px] text-muted-foreground">
+            بمجرد استلام أول طلب، ستظهر هنا نظرتك المالية السريعة.
+          </p>
+        </HubCard>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-3">
-          <MetricCard
-            icon={<Package className="h-6 w-6" />}
-            label="عدد الأوردرات"
-            value={String(data.orderCount)}
-            subtext="إجمالي الطلبات النشطة"
-            variant="default"
-          />
-          <MetricCard
-            icon={<TrendingUp className="h-6 w-6" />}
-            label="إجمالي الأرباح"
-            value={fmtMoney(data.totalProfit)}
-            currency={data.currency}
-            subtext="صافي الأرباح بعد خصم تكاليف الشحن"
-            variant="gradient"
-          />
-          <MetricCard
-            icon={<Clock className="h-6 w-6" />}
-            label="أرباح تحت التحصيل"
-            value={fmtMoney(data.pendingProfit)}
-            currency={data.currency}
-            subtext="أوردرات لم تُسلّم أو تُحصّل بعد"
-            variant="pending"
-          />
+        <div className="space-y-4">
+          {/* Hero: total profit */}
+          <div className="relative overflow-hidden rounded-[var(--radius)] bg-gradient-brand p-6 text-primary-foreground shadow-glow sm:p-8">
+            <div className="pointer-events-none absolute -end-16 -top-16 h-52 w-52 rounded-full bg-white/10 blur-3xl" />
+            <div className="relative">
+              <div className="flex items-center gap-2 text-xs font-semibold text-white/75">
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-white/15">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                </span>
+                إجمالي الأرباح
+              </div>
+              <div className="mt-4 flex flex-wrap items-baseline gap-2">
+                <span className="hub-display text-[44px] font-bold leading-none sm:text-6xl">
+                  {fmtMoney(data.totalProfit)}
+                </span>
+                {data.currency && (
+                  <span className="text-base font-medium text-white/75">{data.currency}</span>
+                )}
+              </div>
+              <p className="mt-3 text-[12px] leading-relaxed text-white/70">
+                صافي الأرباح بعد خصم تكاليف الشحن.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <MiniCard
+              icon={<Package className="h-5 w-5" />}
+              label="عدد الأوردرات"
+              value={String(data.orderCount)}
+              subtext="إجمالي الطلبات النشطة"
+              tone="green"
+            />
+            <MiniCard
+              icon={<Clock className="h-5 w-5" />}
+              label="أرباح تحت التحصيل"
+              value={fmtMoney(data.pendingProfit)}
+              currency={data.currency}
+              subtext="أوردرات لم تُسلّم أو تُحصّل بعد"
+              tone="amber"
+            />
+          </div>
         </div>
       )}
-    </PageShell>
+    </HubShell>
   );
 }
 
-function MetricCard({
+function MiniCard({
   icon,
   label,
   value,
   currency,
   subtext,
-  variant,
+  tone,
 }: {
   icon: ReactNode;
   label: string;
   value: string;
   currency?: string;
   subtext: string;
-  variant: "default" | "gradient" | "pending";
+  tone: "green" | "amber";
 }) {
-  const isGradient = variant === "gradient";
-  const isPending = variant === "pending";
-
+  const amber = tone === "amber";
   return (
-    <SurfaceCard
-      className={`relative overflow-hidden p-6 transition-all hover:-translate-y-0.5 sm:p-8 ${
-        isGradient
-          ? "border-transparent bg-gradient-brand text-primary-foreground shadow-glow"
-          : isPending
-            ? "border-l-4 border-l-amber-500/70"
-            : ""
-      }`}
-    >
-      {isGradient && (
-        <div className="pointer-events-none absolute -end-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
-      )}
-      <div className="relative">
+    <HubCard className="p-5">
+      <div className="flex items-start justify-between">
         <div
-          className={`mb-5 grid h-12 w-12 place-items-center rounded-2xl ${
-            isGradient
-              ? "bg-white/15 text-white"
-              : isPending
-                ? "bg-amber-500/10 text-amber-600"
-                : "bg-primary/10 text-primary"
+          className={`grid h-11 w-11 place-items-center rounded-2xl ${
+            amber ? "bg-amber-500/10 text-amber-600" : "bg-accent text-accent-foreground"
           }`}
         >
           {icon}
         </div>
-        <div className={`text-sm font-medium ${isGradient ? "text-white/80" : "text-muted-foreground"}`}>
-          {label}
-        </div>
-        <div className="mt-2 flex items-baseline gap-2">
-          <span className="text-4xl font-bold tracking-tight sm:text-5xl">{value}</span>
-          {currency && (
-            <span className={`text-lg font-medium ${isGradient ? "text-white/80" : "text-muted-foreground"}`}>
-              {currency}
-            </span>
-          )}
-        </div>
-        <p className={`mt-3 text-xs ${isGradient ? "text-white/70" : "text-muted-foreground"}`}>
-          {subtext}
-        </p>
+        <ArrowUpRight className="h-4 w-4 text-muted-foreground/50" />
       </div>
-    </SurfaceCard>
+      <div className="mt-4 text-xs font-semibold text-muted-foreground">{label}</div>
+      <div className="mt-1 flex items-baseline gap-1.5">
+        <span className="hub-display text-3xl font-bold leading-none">{value}</span>
+        {currency && <span className="text-sm text-muted-foreground">{currency}</span>}
+      </div>
+      <p className="mt-2 text-[11px] text-muted-foreground">{subtext}</p>
+    </HubCard>
   );
 }
 
 function LoadingMetrics() {
   return (
-    <div className="grid gap-5 sm:grid-cols-3">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <SurfaceCard key={i} className="p-6 sm:p-8">
-          <Skeleton className="h-12 w-12 rounded-2xl" />
-          <Skeleton className="mt-5 h-4 w-24" />
-          <Skeleton className="mt-3 h-14 w-40" />
-          <Skeleton className="mt-3 h-3 w-48" />
-        </SurfaceCard>
-      ))}
+    <div className="space-y-4">
+      <Skeleton className="h-44 w-full rounded-[var(--radius)]" />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Skeleton className="h-40 w-full rounded-[var(--radius)]" />
+        <Skeleton className="h-40 w-full rounded-[var(--radius)]" />
+      </div>
     </div>
   );
 }
